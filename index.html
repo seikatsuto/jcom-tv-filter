@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+<meta charset="utf-8">
+<title>マイ番組表</title>
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<h1>マイ番組表</h1>
+
+<table>
+
+<thead>
+<tr>
+
+<th>日</th>
+<th>Ch</th>
+<th>番号</th>
+<th>開始</th>
+<th>終了</th>
+<th>番組</th>
+<th>説明</th>
+
+</tr>
+</thead>
+
+<tbody id="tv"></tbody>
+
+</table>
+
+<script>
+
+fetch("my_tv.json")
+.then(r=>r.json())
+.then(data=>{
+
+let html="";
+
+data.forEach(p=>{
+
+html+=`
+
+<tr>
+
+<td>${p.date}</td>
+<td>${p.channel}</td>
+<td>${p.ch_num}</td>
+<td>${p.start}</td>
+<td>${p.end}</td>
+<td>${p.title}</td>
+<td>${p.desc}</td>
+
+</tr>
+
+`;
+
+});
+
+document.getElementById("tv").innerHTML=html;
+
+});
+
+</script>
+
+</body>
+</html>
