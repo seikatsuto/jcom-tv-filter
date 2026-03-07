@@ -26,8 +26,8 @@ jobs:
 
       - name: Install libraries
         run: |
-          pip install requests lxml
-
+              pip install requests beautifulsoup4
+              
       - name: Run program
         run: |
           python make_tv.py
