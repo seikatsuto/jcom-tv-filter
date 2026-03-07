@@ -2,9 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import json
 
-# ブラウザのふりをする
 headers={
-"User-Agent":"Mozilla/5.0"
+ "User-Agent":"Mozilla/5.0"
 }
 
 with open("keywords.txt",encoding="utf8") as f:
@@ -18,11 +17,15 @@ for kw in keywords:
 
     r=requests.get(url,headers=headers)
 
-    html=r.text
+    print("URL:",url)
+    print("status:",r.status_code)
+    print("length:",len(r.text))
 
-    soup=BeautifulSoup(html,"html.parser")
+    soup=BeautifulSoup(r.text,"html.parser")
 
     items=soup.select("a")
+
+    print("links:",len(items))
 
     for it in items:
 
@@ -31,16 +34,9 @@ for kw in keywords:
         if kw in text and len(text)>5:
 
             results.append({
-                "date":"",
-                "channel":"",
-                "ch_num":"",
-                "start":"",
-                "end":"",
-                "title":text,
-                "desc":""
+                "title":text
             })
 
-# 重複削除
 unique=[]
 seen=set()
 
@@ -56,3 +52,4 @@ with open("my_tv.json","w",encoding="utf8") as f:
     json.dump(unique,f,ensure_ascii=False,indent=2)
 
 print("programs:",len(unique))
+
