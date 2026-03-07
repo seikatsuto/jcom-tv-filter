@@ -1,83 +1,100 @@
 <!DOCTYPE html>
-<html lang="ja">
-
+<html>
 <head>
-
 <meta charset="utf-8">
-<title>マイ番組表</title>
+<title>TVキーワード番組表</title>
 
-<link rel="stylesheet" href="style.css">
+<style>
+
+body{
+font-family:sans-serif;
+background:#f2f2f2;
+padding:30px;
+}
+
+h1{
+margin-bottom:20px;
+}
+
+table{
+border-collapse:collapse;
+background:white;
+width:100%;
+}
+
+th,td{
+border:1px solid #ccc;
+padding:8px;
+}
+
+th{
+background:#333;
+color:white;
+}
+
+img{
+width:120px;
+}
+
+</style>
 
 </head>
 
 <body>
 
-<h1>マイ番組表</h1>
+<h1>TVキーワード番組表（今日＋明日）</h1>
 
-<table>
+<table id="tv">
 
-<thead>
 <tr>
-
 <th>日</th>
+<th>時間</th>
 <th>Ch</th>
-<th>番号</th>
-<th>開始</th>
-<th>終了</th>
+<th>JCOM</th>
 <th>番組</th>
-<th>説明</th>
-
+<th>画像</th>
 </tr>
-</thead>
-
-<tbody id="tv"></tbody>
 
 </table>
 
 <script>
+
 fetch("my_tv.json")
-.then(r => r.text())
-.then(text => {
+.then(r=>r.json())
+.then(data=>{
 
- if(!text.trim()){
-   return [];
- }
+let table=document.getElementById("tv")
 
- return JSON.parse(text);
+data.programs.forEach(p=>{
 
-})
-.then(data => {
+let img="https://placehold.jp/120x70.png"
 
- console.log(data);
+let tr=document.createElement("tr")
 
-let html="";
-
-data.forEach(p=>{
-
-html+=`
-
-<tr>
+tr.innerHTML=`
 
 <td>${p.date}</td>
+<td>${p.time}</td>
 <td>${p.channel}</td>
-<td>${p.ch_num}</td>
-<td>${p.start}</td>
-<td>${p.end}</td>
-<td>${p.title}</td>
-<td>${p.desc}</td>
+<td>${p.jcom}</td>
+<td>
+<a href="${p.url}" target="_blank">
+${p.title}
+</a>
+</td>
+<td>
+<img src="${img}">
+</td>
 
-</tr>
+`
 
-`;
+table.appendChild(tr)
 
-});
+})
 
-document.getElementById("tv").innerHTML=html;
-
-});
+})
 
 </script>
 
 </body>
 </html>
-
