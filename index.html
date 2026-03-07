@@ -35,10 +35,22 @@
 </table>
 
 <script>
-
 fetch("my_tv.json")
-.then(r=>r.json())
-.then(data=>{
+.then(r => r.text())
+.then(text => {
+
+ if(!text.trim()){
+   return [];
+ }
+
+ return JSON.parse(text);
+
+})
+.then(data => {
+
+ console.log(data);
+
+});
 
 let html="";
 
