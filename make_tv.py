@@ -1,69 +1,148 @@
 import requests
 from bs4 import BeautifulSoup
 import json
+import datetime
 
 print("start script")
 
-headers = {
-    "User-Agent": "Mozilla/5.0"
+headers={"User-Agent":"Mozilla/5.0"}
+
+BASE="https://tvkingdom.jp"
+
+AREAS=["23"]  # 東京
+DAYS=2        # 今日＋明日
+
+# JCOMチャンネル番号（主要）
+JCOM_CHANNELS={
+"NHK総合":"1",
+"NHK Eテレ":"2",
+"日本テレビ":"4",
+"TBS":"6",
+"フジテレビ":"8",
+"テレビ朝日":"5",
+"テレビ東京":"7",
+"BS1":"101",
+"BSプレミアム":"103",
+"BS日テレ":"141",
+"BS朝日":"151",
+"BS-TBS":"161",
+"BSテレ東":"171",
+"BSフジ":"181"
 }
 
-# キーワード読み込み
-with open("keywords.txt", encoding="utf8") as f:
-    keywords = [x.strip() for x in f if x.strip()]
+with open("keywords.txt",encoding="utf8") as f:
+    KEYWORDS=[x.strip() for x in f if x.strip()]
 
-print("keywords:", keywords)
+print("keywords:",KEYWORDS)
 
-# 東京 地上波 + BS 番組表
-url = "https://tvkingdom.jp/chart/23.action"
+programs=[]
 
-print("download schedule...")
-r = requests.get(url, headers=headers)
+for d in range(DAYS):
 
-print("status:", r.status_code)
+    date=(datetime.date.today()+datetime.timedelta(days=d)).strftime("%Y%m%d")
 
-soup = BeautifulSoup(r.text, "html.parser")
+    url=f"{BASE}/chart/23.action?head={date}"
 
-cells = soup.select("td")
+    print("download:",url)
 
-print("cells:", len(cells))
+    r=requests.get(url,headers=headers)
 
-results = []
+    print("status:",r.status_code)
 
-for c in cells:
+    soup=BeautifulSoup(r.text,"html.parser")
 
-    text = c.get_text(" ", strip=True)
+    cells=soup.select("td")
 
-    if len(text) < 6:
-        continue
+    for c in cells:
 
-    for k in keywords:
+        text=c.get_text(" ",strip=True)
 
-        if k in text:
+        if len(text)<6:
+            continue
 
-            results.append({
-                "keyword": k,
-                "program": text
-            })
+        link=c.find("a")
+
+        prog_url=""
+
+        if link and link.get("href"):
+            prog_url=BASE+link.get("href")
+
+        time=""
+
+        if ":" in text:
+            p=text.find(":")
+            time=text[p-2:p+3]
+
+        title=text
+
+        programs.append({
+            "time":time,
+            "title":title,
+            "url":prog_url,
+            "date":date
+        })
+
+print("total programs:",len(programs))
+
+# キーワード抽出
+results=[]
+
+for p in programs:
+
+    for k in KEYWORDS:
+
+        if k in p["title"]:
+
+            item={
+                "keyword":k,
+                "time":p["time"],
+                "title":p["title"],
+                "url":p["url"],
+                "date":p["date"],
+                "channel":"",
+                "jcom":""
+            }
+
+            # チャンネル推定
+            for ch in JCOM_CHANNELS:
+
+                if ch in p["title"]:
+
+                    item["channel"]=ch
+                    item["jcom"]=JCOM_CHANNELS[ch]
+
+            results.append(item)
 
             break
 
-print("matched:", len(results))
+print("matched:",len(results))
 
 # 重複削除
-unique = []
-seen = set()
+unique=[]
+seen=set()
 
 for r in results:
 
-    if r["program"] not in seen:
-        seen.add(r["program"])
+    key=r["date"]+r["time"]+r["title"]
+
+    if key not in seen:
+
+        seen.add(key)
         unique.append(r)
 
-print("unique:", len(unique))
+print("unique:",len(unique))
 
-# JSON保存
-with open("my_tv.json", "w", encoding="utf8") as f:
-    json.dump(unique, f, ensure_ascii=False, indent=2)
+unique.sort(key=lambda x:(x["date"],x["time"]))
 
-print("programs:", len(unique))
+data={
+"generated":datetime.datetime.now().isoformat(),
+"count":len(unique),
+"programs":unique
+}
+
+with open("my_tv.json","w",encoding="utf8") as f:
+
+    json.dump(data,f,ensure_ascii=False,indent=2)
+
+print("programs:",len(unique))
+print("done")
