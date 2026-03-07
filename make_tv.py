@@ -1,4 +1,5 @@
 import requests
+import xml.etree.ElementTree as ET
 import json
 
 headers={
@@ -9,36 +10,37 @@ headers={
 with open("keywords.txt",encoding="utf8") as f:
     keywords=[x.strip() for x in f if x.strip()!=""]
 
-results=[]
-
-# サンプル番組データAPI
-url="https://api.tvguide.myjcom.jp/programs"
+# 公開EPGデータ
+url="https://iptv-org.github.io/epg/guides/jp/tvkingdom.jp.xml"
 
 r=requests.get(url,headers=headers)
 
-if r.status_code!=200:
-    print("API error")
-    exit()
+xml=r.text
 
-data=r.json()
+root=ET.fromstring(xml)
 
-for p in data["programs"]:
+results=[]
 
-    title=p.get("title","")
-    desc=p.get("description","")
+for p in root.findall("programme"):
 
-    text=title+" "+desc
+    title=p.find("title")
+    desc=p.find("desc")
+
+    title_text=title.text if title is not None else ""
+    desc_text=desc.text if desc is not None else ""
+
+    text=title_text+" "+desc_text
 
     for k in keywords:
 
         if k in text:
 
             results.append({
-                "channel":p.get("channelName",""),
-                "start":p.get("startTime",""),
-                "end":p.get("endTime",""),
-                "title":title,
-                "desc":desc
+                "channel":p.get("channel"),
+                "start":p.get("start"),
+                "end":p.get("stop"),
+                "title":title_text,
+                "desc":desc_text
             })
 
             break
