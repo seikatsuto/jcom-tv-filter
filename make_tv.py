@@ -5,45 +5,65 @@ import json
 print("start script")
 
 headers = {
- "User-Agent":"Mozilla/5.0"
+    "User-Agent": "Mozilla/5.0"
 }
 
-# キーワード
-with open("keywords.txt",encoding="utf8") as f:
-    keywords=[x.strip() for x in f if x.strip()]
+# キーワード読み込み
+with open("keywords.txt", encoding="utf8") as f:
+    keywords = [x.strip() for x in f if x.strip()]
 
-print("keywords:",keywords)
+print("keywords:", keywords)
 
-results=[]
+# 東京 地上波 + BS 番組表
+url = "https://tvkingdom.jp/chart/23.action"
 
-for kw in keywords:
+print("download schedule...")
+r = requests.get(url, headers=headers)
 
-    url=f"https://tvkingdom.jp/schedulesBySearch.action?condition.keyword={kw}"
+print("status:", r.status_code)
 
-    print("search:",kw)
+soup = BeautifulSoup(r.text, "html.parser")
 
-    r=requests.get(url,headers=headers)
+cells = soup.select("td")
 
-    print("status:",r.status_code)
+print("cells:", len(cells))
 
-    soup=BeautifulSoup(r.text,"html.parser")
+results = []
 
-    items=soup.select("a")
+for c in cells:
 
-    for a in items:
+    text = c.get_text(" ", strip=True)
 
-        title=a.get_text(strip=True)
+    if len(text) < 6:
+        continue
 
-        if kw in title and len(title)>5:
+    for k in keywords:
+
+        if k in text:
 
             results.append({
-                "keyword":kw,
-                "title":title
+                "keyword": k,
+                "program": text
             })
 
-print("matched:",len(results))
+            break
 
-with open("my_tv.json","w",encoding="utf8") as f:
-    json.dump(results,f,ensure_ascii=False,indent=2)
+print("matched:", len(results))
 
-print("programs:",len(results))
+# 重複削除
+unique = []
+seen = set()
+
+for r in results:
+
+    if r["program"] not in seen:
+        seen.add(r["program"])
+        unique.append(r)
+
+print("unique:", len(unique))
+
+# JSON保存
+with open("my_tv.json", "w", encoding="utf8") as f:
+    json.dump(unique, f, ensure_ascii=False, indent=2)
+
+print("programs:", len(unique))
