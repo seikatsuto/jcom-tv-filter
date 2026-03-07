@@ -2,6 +2,8 @@ import requests
 from lxml import etree
 import json
 
+print("start script")
+
 headers={
  "User-Agent":"Mozilla/5.0"
 }
@@ -10,18 +12,27 @@ headers={
 with open("keywords.txt",encoding="utf8") as f:
     keywords=[x.strip() for x in f if x.strip()!=""]
 
+print("keywords:",keywords)
+
 url="https://iptv-org.github.io/epg/guides/jp/tvkingdom.jp.xml"
+
+print("download epg...")
 
 r=requests.get(url,headers=headers)
 
-# 壊れたXMLでも読む
+print("status:",r.status_code)
+
 parser = etree.XMLParser(recover=True)
 
 root = etree.fromstring(r.content, parser)
 
+programmes=root.findall("programme")
+
+print("total programmes:",len(programmes))
+
 results=[]
 
-for p in root.findall("programme"):
+for p in programmes:
 
     title=p.find("title")
     desc=p.find("desc")
@@ -29,7 +40,7 @@ for p in root.findall("programme"):
     title_text=title.text if title is not None else ""
     desc_text=desc.text if desc is not None else ""
 
-    text=(title_text+" "+desc_text)
+    text=title_text+" "+desc_text
 
     for k in keywords:
 
@@ -44,6 +55,8 @@ for p in root.findall("programme"):
             })
 
             break
+
+print("matched:",len(results))
 
 with open("my_tv.json","w",encoding="utf8") as f:
     json.dump(results,f,ensure_ascii=False,indent=2)
