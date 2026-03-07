@@ -9,20 +9,17 @@ headers={"User-Agent":"Mozilla/5.0"}
 
 BASE="https://tvkingdom.jp"
 
-AREAS=["23"]  # 東京
-DAYS=2        # 今日＋明日
+DAYS=2
 
-# JCOMチャンネル番号（主要）
+# JCOMチャンネル
 JCOM_CHANNELS={
 "NHK総合":"1",
 "NHK Eテレ":"2",
 "日本テレビ":"4",
-"TBS":"6",
-"フジテレビ":"8",
 "テレビ朝日":"5",
+"TBS":"6",
 "テレビ東京":"7",
-"BS1":"101",
-"BSプレミアム":"103",
+"フジテレビ":"8",
 "BS日テレ":"141",
 "BS朝日":"151",
 "BS-TBS":"161",
@@ -47,40 +44,58 @@ for d in range(DAYS):
 
     r=requests.get(url,headers=headers)
 
-    print("status:",r.status_code)
-
     soup=BeautifulSoup(r.text,"html.parser")
 
-    cells=soup.select("td")
+    # チャンネル取得
+    channel_cells=soup.select(".stationCell")
 
-    for c in cells:
+    channels=[c.get_text(strip=True) for c in channel_cells]
 
-        text=c.get_text(" ",strip=True)
+    print("channels:",channels)
 
-        if len(text)<6:
-            continue
+    rows=soup.select("tr")
 
-        link=c.find("a")
+    for row in rows:
 
-        prog_url=""
+        cells=row.find_all("td")
 
-        if link and link.get("href"):
-            prog_url=BASE+link.get("href")
+        for i,c in enumerate(cells):
 
-        time=""
+            text=c.get_text(" ",strip=True)
 
-        if ":" in text:
-            p=text.find(":")
-            time=text[p-2:p+3]
+            if len(text)<6:
+                continue
 
-        title=text
+            link=c.find("a")
 
-        programs.append({
-            "time":time,
-            "title":title,
-            "url":prog_url,
-            "date":date
-        })
+            url=""
+
+            if link and link.get("href"):
+                url=BASE+link.get("href")
+
+            time=""
+
+            if ":" in text:
+                p=text.find(":")
+                time=text[p-2:p+3]
+
+            title=text
+
+            channel=""
+
+            if i < len(channels):
+                channel=channels[i]
+
+            jcom=JCOM_CHANNELS.get(channel,"")
+
+            programs.append({
+                "date":date,
+                "time":time,
+                "title":title,
+                "channel":channel,
+                "jcom":jcom,
+                "url":url
+            })
 
 print("total programs:",len(programs))
 
@@ -93,23 +108,8 @@ for p in programs:
 
         if k in p["title"]:
 
-            item={
-                "keyword":k,
-                "time":p["time"],
-                "title":p["title"],
-                "url":p["url"],
-                "date":p["date"],
-                "channel":"",
-                "jcom":""
-            }
-
-            # チャンネル推定
-            for ch in JCOM_CHANNELS:
-
-                if ch in p["title"]:
-
-                    item["channel"]=ch
-                    item["jcom"]=JCOM_CHANNELS[ch]
+            item=p.copy()
+            item["keyword"]=k
 
             results.append(item)
 
@@ -130,8 +130,6 @@ for r in results:
         seen.add(key)
         unique.append(r)
 
-print("unique:",len(unique))
-
 unique.sort(key=lambda x:(x["date"],x["time"]))
 
 data={
@@ -145,4 +143,3 @@ with open("my_tv.json","w",encoding="utf8") as f:
     json.dump(data,f,ensure_ascii=False,indent=2)
 
 print("programs:",len(unique))
-print("done")
