@@ -4,7 +4,7 @@ import json
 
 print("start script")
 
-headers={
+headers = {
  "User-Agent":"Mozilla/5.0"
 }
 
@@ -14,35 +14,32 @@ with open("keywords.txt",encoding="utf8") as f:
 
 print("keywords:",keywords)
 
-url="https://tvkingdom.jp/schedulesBySearch.action?stationPlatformId=0&condition.keyword=&submit=%E6%A4%9C%E7%B4%A2"
-
-print("download tv page")
-
-r=requests.get(url,headers=headers)
-
-print("status:",r.status_code)
-
-soup=BeautifulSoup(r.text,"html.parser")
-
-programs=soup.select(".program")
-
-print("total programs:",len(programs))
-
 results=[]
 
-for p in programs:
+for kw in keywords:
 
-    title=p.get_text()
+    url=f"https://tvkingdom.jp/schedulesBySearch.action?condition.keyword={kw}"
 
-    for k in keywords:
+    print("search:",kw)
 
-        if k in title:
+    r=requests.get(url,headers=headers)
+
+    print("status:",r.status_code)
+
+    soup=BeautifulSoup(r.text,"html.parser")
+
+    items=soup.select("a")
+
+    for a in items:
+
+        title=a.get_text(strip=True)
+
+        if kw in title and len(title)>5:
 
             results.append({
-                "title":title.strip()
+                "keyword":kw,
+                "title":title
             })
-
-            break
 
 print("matched:",len(results))
 
