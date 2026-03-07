@@ -1,62 +1,52 @@
 import requests
-from lxml import etree
+from bs4 import BeautifulSoup
 import json
 
 print("start script")
 
-headers = {"User-Agent": "Mozilla/5.0"}
+headers={
+ "User-Agent":"Mozilla/5.0"
+}
 
 # キーワード
-with open("keywords.txt", encoding="utf8") as f:
-    keywords = [x.strip() for x in f if x.strip()]
+with open("keywords.txt",encoding="utf8") as f:
+    keywords=[x.strip() for x in f if x.strip()]
 
-print("keywords:", keywords)
+print("keywords:",keywords)
 
-# 日本EPG
-url = "https://iptv-org.github.io/epg/guides/jp.xml"
+url="https://tvkingdom.jp/schedulesBySearch.action?stationPlatformId=0&condition.keyword=&submit=%E6%A4%9C%E7%B4%A2"
 
-print("download epg...")
-r = requests.get(url, headers=headers)
+print("download tv page")
 
-print("status:", r.status_code)
+r=requests.get(url,headers=headers)
 
-if r.status_code != 200:
-    print("EPG download failed")
-    exit()
+print("status:",r.status_code)
 
-parser = etree.XMLParser(recover=True)
-root = etree.fromstring(r.content, parser)
+soup=BeautifulSoup(r.text,"html.parser")
 
-programmes = root.findall(".//programme")
+programs=soup.select(".program")
 
-print("total programmes:", len(programmes))
+print("total programs:",len(programs))
 
-results = []
+results=[]
 
-for p in programmes:
+for p in programs:
 
-    title = p.find("title")
-    desc = p.find("desc")
-
-    title_text = title.text if title is not None else ""
-    desc_text = desc.text if desc is not None else ""
-
-    text = title_text + " " + desc_text
+    title=p.get_text()
 
     for k in keywords:
-        if k in text:
+
+        if k in title:
+
             results.append({
-                "channel": p.get("channel"),
-                "start": p.get("start"),
-                "end": p.get("stop"),
-                "title": title_text,
-                "desc": desc_text
+                "title":title.strip()
             })
+
             break
 
-print("matched:", len(results))
+print("matched:",len(results))
 
-with open("my_tv.json", "w", encoding="utf8") as f:
-    json.dump(results, f, ensure_ascii=False, indent=2)
+with open("my_tv.json","w",encoding="utf8") as f:
+    json.dump(results,f,ensure_ascii=False,indent=2)
 
-print("programs:", len(results))
+print("programs:",len(results))
