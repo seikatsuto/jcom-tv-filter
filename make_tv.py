@@ -4,65 +4,59 @@ import json
 
 print("start script")
 
-headers={
- "User-Agent":"Mozilla/5.0"
-}
+headers = {"User-Agent": "Mozilla/5.0"}
 
 # キーワード
-with open("keywords.txt",encoding="utf8") as f:
-    keywords=[x.strip() for x in f if x.strip()!=""]
+with open("keywords.txt", encoding="utf8") as f:
+    keywords = [x.strip() for x in f if x.strip()]
 
-print("keywords:",keywords)
+print("keywords:", keywords)
 
-url="https://raw.githubusercontent.com/iptv-org/epg/master/guides/jp/tvkingdom.jp.xml"
-# url="https://iptv-epg.org/files/epg-jp.xml"
+# 日本EPG
+url = "https://iptv-org.github.io/epg/guides/jp.xml"
 
 print("download epg...")
+r = requests.get(url, headers=headers)
 
-r=requests.get(url,headers=headers)
+print("status:", r.status_code)
 
-print("status:",r.status_code)
+if r.status_code != 200:
+    print("EPG download failed")
+    exit()
 
 parser = etree.XMLParser(recover=True)
-
 root = etree.fromstring(r.content, parser)
 
-programmes=root.findall("programme")
+programmes = root.findall(".//programme")
 
-print("total programmes:",len(programmes))
+print("total programmes:", len(programmes))
 
-results=[]
+results = []
 
 for p in programmes:
 
-    title=p.find("title")
-    desc=p.find("desc")
+    title = p.find("title")
+    desc = p.find("desc")
 
-    title_text=title.text if title is not None else ""
-    desc_text=desc.text if desc is not None else ""
+    title_text = title.text if title is not None else ""
+    desc_text = desc.text if desc is not None else ""
 
-    text=title_text+" "+desc_text
+    text = title_text + " " + desc_text
 
     for k in keywords:
-
         if k in text:
-
             results.append({
-                "channel":p.get("channel"),
-                "start":p.get("start"),
-                "end":p.get("stop"),
-                "title":title_text,
-                "desc":desc_text
+                "channel": p.get("channel"),
+                "start": p.get("start"),
+                "end": p.get("stop"),
+                "title": title_text,
+                "desc": desc_text
             })
-
             break
 
-print("matched:",len(results))
+print("matched:", len(results))
 
-with open("my_tv.json","w",encoding="utf8") as f:
-    json.dump(results,f,ensure_ascii=False,indent=2)
+with open("my_tv.json", "w", encoding="utf8") as f:
+    json.dump(results, f, ensure_ascii=False, indent=2)
 
-print("programs:",len(results))
-
-
-
+print("programs:", len(results))
