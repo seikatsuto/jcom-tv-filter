@@ -14,9 +14,8 @@ with open("keywords.txt",encoding="utf8") as f:
 
 print("keywords:",keywords)
 
-
-url="https://iptv-epg.org/files/epg-jp.xml"
-
+url="https://raw.githubusercontent.com/iptv-org/epg/master/guides/jp/tvkingdom.jp.xml"
+# url="https://iptv-epg.org/files/epg-jp.xml"
 
 print("download epg...")
 
@@ -64,5 +63,6 @@ with open("my_tv.json","w",encoding="utf8") as f:
     json.dump(results,f,ensure_ascii=False,indent=2)
 
 print("programs:",len(results))
+
 
 
