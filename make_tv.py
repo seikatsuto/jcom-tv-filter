@@ -2,50 +2,45 @@ import requests
 from bs4 import BeautifulSoup
 import json
 
-# ----------------
-# キーワード
-# ----------------
+# ブラウザのふりをする
+headers={
+"User-Agent":"Mozilla/5.0"
+}
 
 with open("keywords.txt",encoding="utf8") as f:
     keywords=[x.strip() for x in f if x.strip()!=""]
 
 results=[]
 
-# ----------------
-# 各キーワード検索
-# ----------------
-
 for kw in keywords:
 
     url=f"https://tv.yahoo.co.jp/search/?q={kw}"
 
-    html=requests.get(url).text
+    r=requests.get(url,headers=headers)
+
+    html=r.text
 
     soup=BeautifulSoup(html,"html.parser")
 
-    items=soup.select("li")
+    items=soup.select("a")
 
     for it in items:
 
-        text=it.get_text()
+        text=it.get_text().strip()
 
-        if kw not in text:
-            continue
+        if kw in text and len(text)>5:
 
-        results.append({
-            "date":"",
-            "channel":"",
-            "ch_num":"",
-            "start":"",
-            "end":"",
-            "title":text.strip(),
-            "desc":""
-        })
+            results.append({
+                "date":"",
+                "channel":"",
+                "ch_num":"",
+                "start":"",
+                "end":"",
+                "title":text,
+                "desc":""
+            })
 
-# ----------------
 # 重複削除
-# ----------------
-
 unique=[]
 seen=set()
 
@@ -57,13 +52,7 @@ for r in results:
     seen.add(r["title"])
     unique.append(r)
 
-# ----------------
-# 保存
-# ----------------
-
 with open("my_tv.json","w",encoding="utf8") as f:
     json.dump(unique,f,ensure_ascii=False,indent=2)
 
 print("programs:",len(unique))
-
-
