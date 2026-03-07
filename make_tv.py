@@ -1,55 +1,49 @@
 import requests
-from bs4 import BeautifulSoup
 import json
 
 headers={
  "User-Agent":"Mozilla/5.0"
 }
 
+# キーワード
 with open("keywords.txt",encoding="utf8") as f:
     keywords=[x.strip() for x in f if x.strip()!=""]
 
 results=[]
 
-for kw in keywords:
+# サンプル番組データAPI
+url="https://api.tvguide.myjcom.jp/programs"
 
-    url=f"https://tv.yahoo.co.jp/search/?q={kw}"
+r=requests.get(url,headers=headers)
 
-    r=requests.get(url,headers=headers)
+if r.status_code!=200:
+    print("API error")
+    exit()
 
-    print("URL:",url)
-    print("status:",r.status_code)
-    print("length:",len(r.text))
+data=r.json()
 
-    soup=BeautifulSoup(r.text,"html.parser")
+for p in data["programs"]:
 
-    items=soup.select("a")
+    title=p.get("title","")
+    desc=p.get("description","")
 
-    print("links:",len(items))
+    text=title+" "+desc
 
-    for it in items:
+    for k in keywords:
 
-        text=it.get_text().strip()
-
-        if kw in text and len(text)>5:
+        if k in text:
 
             results.append({
-                "title":text
+                "channel":p.get("channelName",""),
+                "start":p.get("startTime",""),
+                "end":p.get("endTime",""),
+                "title":title,
+                "desc":desc
             })
 
-unique=[]
-seen=set()
-
-for r in results:
-
-    if r["title"] in seen:
-        continue
-
-    seen.add(r["title"])
-    unique.append(r)
+            break
 
 with open("my_tv.json","w",encoding="utf8") as f:
-    json.dump(unique,f,ensure_ascii=False,indent=2)
+    json.dump(results,f,ensure_ascii=False,indent=2)
 
-print("programs:",len(unique))
-
+print("programs:",len(results))
