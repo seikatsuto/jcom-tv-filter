@@ -1,7 +1,6 @@
 import requests
-import xml.etree.ElementTree as ET
+from lxml import etree
 import json
-import html
 
 headers={
  "User-Agent":"Mozilla/5.0"
@@ -15,12 +14,10 @@ url="https://iptv-org.github.io/epg/guides/jp/tvkingdom.jp.xml"
 
 r=requests.get(url,headers=headers)
 
-xml=r.text
+# 壊れたXMLでも読む
+parser = etree.XMLParser(recover=True)
 
-# ★ エンティティを文字に変換
-xml=html.unescape(xml)
-
-root=ET.fromstring(xml)
+root = etree.fromstring(r.content, parser)
 
 results=[]
 
@@ -32,7 +29,7 @@ for p in root.findall("programme"):
     title_text=title.text if title is not None else ""
     desc_text=desc.text if desc is not None else ""
 
-    text=title_text+" "+desc_text
+    text=(title_text+" "+desc_text)
 
     for k in keywords:
 
