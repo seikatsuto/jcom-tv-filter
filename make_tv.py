@@ -1,105 +1,69 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-from datetime import datetime,timedelta
 
-BASE="https://tvguide.myjcom.jp/"
-
-# -----------------------
-# 日付
-# -----------------------
-
-today=datetime.today()
-dates=[today,today+timedelta(days=1)]
-
-# -----------------------
+# ----------------
 # キーワード
-# -----------------------
+# ----------------
 
 with open("keywords.txt",encoding="utf8") as f:
- keywords=[x.strip() for x in f if x.strip()!=""]
-
-# -----------------------
-# チャンネル
-# -----------------------
-
-with open("channels.json",encoding="utf8") as f:
- channels=json.load(f)
+    keywords=[x.strip() for x in f if x.strip()!=""]
 
 results=[]
 
-# -----------------------
-# 取得
-# -----------------------
+# ----------------
+# 各キーワード検索
+# ----------------
 
-for d in dates:
+for kw in keywords:
 
- date=d.strftime("%Y%m%d")
+    url=f"https://tv.yahoo.co.jp/search/?q={kw}"
 
- url=f"https://tvguide.myjcom.jp/search/?date={date}"
+    html=requests.get(url).text
 
- html=requests.get(url).text
+    soup=BeautifulSoup(html,"html.parser")
 
- soup=BeautifulSoup(html,"html.parser")
+    items=soup.select("li")
 
- programs=soup.select(".program")
+    for it in items:
 
- for p in programs:
+        text=it.get_text()
 
-  title=p.select_one(".title")
-  desc=p.select_one(".desc")
-  time=p.select_one(".time")
-  ch=p.select_one(".channel")
+        if kw not in text:
+            continue
 
-  if not title:
-   continue
+        results.append({
+            "date":"",
+            "channel":"",
+            "ch_num":"",
+            "start":"",
+            "end":"",
+            "title":text.strip(),
+            "desc":""
+        })
 
-  title=title.text.strip()
-  desc=desc.text.strip() if desc else ""
-  time=time.text.strip() if time else ""
-  ch=ch.text.strip() if ch else ""
+# ----------------
+# 重複削除
+# ----------------
 
-  text=title+" "+desc
+unique=[]
+seen=set()
 
-  hit=False
+for r in results:
 
-  for k in keywords:
-   if k in text:
-    hit=True
-    break
+    if r["title"] in seen:
+        continue
 
-  if not hit:
-   continue
+    seen.add(r["title"])
+    unique.append(r)
 
-  start=""
-  end=""
-
-  if "～" in time:
-   start,end=time.split("～")
-
-  num=channels.get(ch,"---")
-
-  results.append({
-   "date":date,
-   "channel":ch,
-   "ch_num":num,
-   "start":start,
-   "end":end,
-   "title":title,
-   "desc":desc
-  })
-
-# -----------------------
-# 並び替え
-# -----------------------
-
-results=sorted(results,key=lambda x:(x["date"],x["start"]))
-
-# -----------------------
+# ----------------
 # 保存
-# -----------------------
+# ----------------
 
 with open("my_tv.json","w",encoding="utf8") as f:
- json.dump(results,f,ensure_ascii=False,indent=2)
+    json.dump(unique,f,ensure_ascii=False,indent=2)
 
-print("programs:",len(results))
+print("programs:",len(unique))
+
+
