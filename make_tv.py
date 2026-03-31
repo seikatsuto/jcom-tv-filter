@@ -18,8 +18,7 @@ JCOM = {
 with open("keywords.txt", encoding="utf8") as f:
     KEYWORDS = [x.strip() for x in f if x.strip()]
 
-INDEX_URL = "https://iptv-org.github.io/epg/guides/jp.json"
-
+INDEX_URL = "https://iptv-org.github.io/epg/index.json"
 headers = {
     "User-Agent": "Mozilla/5.0"
 }
@@ -34,6 +33,13 @@ if r.status_code != 200:
 
 try:
     guides = r.json()
+
+    # 日本だけ
+    guides = [g for g in guides if g.get("countries") and "jp" in g.get("countries")]
+
+    print("jp guides:", len(guides))
+
+
 except Exception as e:
     print("json decode error:", e)
     print("response:", r.text[:200])  # ←中身確認
