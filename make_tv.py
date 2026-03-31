@@ -5,11 +5,6 @@ import datetime
 
 print("start")
 
-# =====================
-# 設定
-# =====================
-
-# JCOMチャンネル番号
 JCOM = {
     "NHK総合": "1",
     "NHK Eテレ": "2",
@@ -17,52 +12,36 @@ JCOM = {
     "テレビ朝日": "5",
     "TBS": "6",
     "テレビ東京": "7",
-    "フジテレビ": "8",
-    "BS日テレ": "141",
-    "BS朝日": "151",
-    "BS-TBS": "161",
-    "BSテレ東": "171",
-    "BSフジ": "181"
+    "フジテレビ": "8"
 }
-
-# =====================
-# キーワード
-# =====================
 
 with open("keywords.txt", encoding="utf8") as f:
     KEYWORDS = [x.strip() for x in f if x.strip()]
 
-print("keywords:", KEYWORDS)
-
-# =====================
-# EPG一覧
-# =====================
-
 INDEX_URL = "https://iptv-org.github.io/epg/guides/jp.json"
 
-guides = requests.get(INDEX_URL).json()
-
-# =====================
-# 今日＋明日
-# =====================
+try:
+    guides = requests.get(INDEX_URL, timeout=10).json()
+except Exception as e:
+    print("index error:", e)
+    exit(0)   # ← 落とさない
 
 today = datetime.datetime.now()
 tomorrow = today + datetime.timedelta(days=1)
 
 def in_range(start):
-    dt = datetime.datetime.strptime(start[:14], "%Y%m%d%H%M%S")
-    return today <= dt <= tomorrow
-
-# =====================
-# 番組取得
-# =====================
+    try:
+        dt = datetime.datetime.strptime(start[:14], "%Y%m%d%H%M%S")
+        return today <= dt <= tomorrow
+    except:
+        return False
 
 programs = []
 
-for g in guides:
+for g in guides[:10]:   # ← 安定のため制限
 
     epg_url = g.get("url")
-    name = g.get("name")
+    name = g.get("name", "")
 
     if not epg_url:
         continue
@@ -70,13 +49,16 @@ for g in guides:
     print("EPG:", name)
 
     try:
-        xml = requests.get(epg_url, timeout=30).text
-    except:
+        r = requests.get(epg_url, timeout=15)
+        xml = r.text
+    except Exception as e:
+        print("download error:", e)
         continue
 
     try:
         root = ET.fromstring(xml)
-    except:
+    except Exception as e:
+        print("xml error:", e)
         continue
 
     for p in root.findall("programme"):
@@ -87,26 +69,21 @@ for g in guides:
             continue
 
         title = p.findtext("title", "")
-        desc = p.findtext("desc", "")
-
-        text = title + " " + desc
 
         for k in KEYWORDS:
 
-            if k in text:
+            if k in title:
 
-                # 時刻整形
-                dt = datetime.datetime.strptime(start[:14], "%Y%m%d%H%M%S")
-                time = dt.strftime("%H:%M")
-                date = dt.strftime("%m/%d")
-
-                channel = name
+                try:
+                    dt = datetime.datetime.strptime(start[:14], "%Y%m%d%H%M%S")
+                except:
+                    continue
 
                 programs.append({
-                    "date": date,
-                    "time": time,
-                    "channel": channel,
-                    "jcom": JCOM.get(channel, ""),
+                    "date": dt.strftime("%m/%d"),
+                    "time": dt.strftime("%H:%M"),
+                    "channel": name,
+                    "jcom": JCOM.get(name, ""),
                     "title": title,
                     "keyword": k
                 })
@@ -115,36 +92,22 @@ for g in guides:
 
 print("matched:", len(programs))
 
-# =====================
 # 重複削除
-# =====================
-
 unique = []
 seen = set()
 
 for p in programs:
-
     key = p["date"] + p["time"] + p["title"]
-
     if key not in seen:
         seen.add(key)
         unique.append(p)
 
-# ソート
 unique.sort(key=lambda x: (x["date"], x["time"]))
 
-# =====================
-# 出力
-# =====================
-
-data = {
-    "generated": datetime.datetime.now().isoformat(),
-    "count": len(unique),
-    "programs": unique
-}
-
 with open("my_tv.json", "w", encoding="utf8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+    json.dump({
+        "count": len(unique),
+        "programs": unique
+    }, f, ensure_ascii=False, indent=2)
 
-print("done:", len(unique))
-
+print("done")
