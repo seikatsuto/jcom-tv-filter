@@ -1,0 +1,27 @@
+name: TV Fetch
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # 1時間ごと
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: install
+      run: pip install requests
+
+    - name: run
+      run: python make_tv.py
+
+    - name: commit
+      run: |
+        git config user.name github-actions
+        git config user.email actions@github.com
+        git add my_tv.json
+        git commit -m "update" || exit 0
+        git push
