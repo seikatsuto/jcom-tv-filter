@@ -20,11 +20,26 @@ with open("keywords.txt", encoding="utf8") as f:
 
 INDEX_URL = "https://iptv-org.github.io/epg/guides/jp.json"
 
+headers = {
+    "User-Agent": "Mozilla/5.0"
+}
+
+r = requests.get(INDEX_URL, headers=headers, timeout=10)
+
+print("status:", r.status_code)
+
+if r.status_code != 200:
+    print("index download failed")
+    exit(0)
+
 try:
-    guides = requests.get(INDEX_URL, timeout=10).json()
+    guides = r.json()
 except Exception as e:
-    print("index error:", e)
-    exit(0)   # ← 落とさない
+    print("json decode error:", e)
+    print("response:", r.text[:200])  # ←中身確認
+    exit(0)
+
+
 
 today = datetime.datetime.now()
 tomorrow = today + datetime.timedelta(days=1)
