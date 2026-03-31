@@ -1,145 +1,150 @@
 import requests
-from bs4 import BeautifulSoup
 import json
+import xml.etree.ElementTree as ET
 import datetime
 
-print("start script")
+print("start")
 
-headers={"User-Agent":"Mozilla/5.0"}
+# =====================
+# 設定
+# =====================
 
-BASE="https://tvkingdom.jp"
-
-DAYS=2
-
-# JCOMチャンネル
-JCOM_CHANNELS={
-"NHK総合":"1",
-"NHK Eテレ":"2",
-"日本テレビ":"4",
-"テレビ朝日":"5",
-"TBS":"6",
-"テレビ東京":"7",
-"フジテレビ":"8",
-"BS日テレ":"141",
-"BS朝日":"151",
-"BS-TBS":"161",
-"BSテレ東":"171",
-"BSフジ":"181"
+# JCOMチャンネル番号
+JCOM = {
+    "NHK総合": "1",
+    "NHK Eテレ": "2",
+    "日本テレビ": "4",
+    "テレビ朝日": "5",
+    "TBS": "6",
+    "テレビ東京": "7",
+    "フジテレビ": "8",
+    "BS日テレ": "141",
+    "BS朝日": "151",
+    "BS-TBS": "161",
+    "BSテレ東": "171",
+    "BSフジ": "181"
 }
 
-with open("keywords.txt",encoding="utf8") as f:
-    KEYWORDS=[x.strip() for x in f if x.strip()]
+# =====================
+# キーワード
+# =====================
 
-print("keywords:",KEYWORDS)
+with open("keywords.txt", encoding="utf8") as f:
+    KEYWORDS = [x.strip() for x in f if x.strip()]
 
-programs=[]
+print("keywords:", KEYWORDS)
 
-for d in range(DAYS):
+# =====================
+# EPG一覧
+# =====================
 
-    date=(datetime.date.today()+datetime.timedelta(days=d)).strftime("%Y%m%d")
+INDEX_URL = "https://iptv-org.github.io/epg/guides/jp.json"
 
-    url=f"{BASE}/chart/23.action?head={date}"
+guides = requests.get(INDEX_URL).json()
 
-    print("download:",url)
+# =====================
+# 今日＋明日
+# =====================
 
-    r=requests.get(url,headers=headers)
+today = datetime.datetime.now()
+tomorrow = today + datetime.timedelta(days=1)
 
-    soup=BeautifulSoup(r.text,"html.parser")
+def in_range(start):
+    dt = datetime.datetime.strptime(start[:14], "%Y%m%d%H%M%S")
+    return today <= dt <= tomorrow
 
-    # チャンネル取得
-    channel_cells=soup.select(".stationCell")
+# =====================
+# 番組取得
+# =====================
 
-    channels=[c.get_text(strip=True) for c in channel_cells]
+programs = []
 
-    print("channels:",channels)
+for g in guides:
 
-    rows=soup.select("tr")
+    epg_url = g.get("url")
+    name = g.get("name")
 
-    for row in rows:
+    if not epg_url:
+        continue
 
-        cells=row.find_all("td")
+    print("EPG:", name)
 
-        for i,c in enumerate(cells):
+    try:
+        xml = requests.get(epg_url, timeout=30).text
+    except:
+        continue
 
-            text=c.get_text(" ",strip=True)
+    try:
+        root = ET.fromstring(xml)
+    except:
+        continue
 
-            if len(text)<6:
-                continue
+    for p in root.findall("programme"):
 
-            link=c.find("a")
+        start = p.get("start")
 
-            url=""
+        if not start or not in_range(start):
+            continue
 
-            if link and link.get("href"):
-                url=BASE+link.get("href")
+        title = p.findtext("title", "")
+        desc = p.findtext("desc", "")
 
-            time=""
+        text = title + " " + desc
 
-            if ":" in text:
-                p=text.find(":")
-                time=text[p-2:p+3]
+        for k in KEYWORDS:
 
-            title=text
+            if k in text:
 
-            channel=""
+                # 時刻整形
+                dt = datetime.datetime.strptime(start[:14], "%Y%m%d%H%M%S")
+                time = dt.strftime("%H:%M")
+                date = dt.strftime("%m/%d")
 
-            if i < len(channels):
-                channel=channels[i]
+                channel = name
 
-            jcom=JCOM_CHANNELS.get(channel,"")
+                programs.append({
+                    "date": date,
+                    "time": time,
+                    "channel": channel,
+                    "jcom": JCOM.get(channel, ""),
+                    "title": title,
+                    "keyword": k
+                })
 
-            programs.append({
-                "date":date,
-                "time":time,
-                "title":title,
-                "channel":channel,
-                "jcom":jcom,
-                "url":url
-            })
+                break
 
-print("total programs:",len(programs))
+print("matched:", len(programs))
 
-# キーワード抽出
-results=[]
+# =====================
+# 重複削除
+# =====================
+
+unique = []
+seen = set()
 
 for p in programs:
 
-    for k in KEYWORDS:
-
-        if k in p["title"]:
-
-            item=p.copy()
-            item["keyword"]=k
-
-            results.append(item)
-
-            break
-
-print("matched:",len(results))
-
-# 重複削除
-unique=[]
-seen=set()
-
-for r in results:
-
-    key=r["date"]+r["time"]+r["title"]
+    key = p["date"] + p["time"] + p["title"]
 
     if key not in seen:
-
         seen.add(key)
-        unique.append(r)
+        unique.append(p)
 
-unique.sort(key=lambda x:(x["date"],x["time"]))
+# ソート
+unique.sort(key=lambda x: (x["date"], x["time"]))
 
-data={
-"generated":datetime.datetime.now().isoformat(),
-"count":len(unique),
-"programs":unique
+# =====================
+# 出力
+# =====================
+
+data = {
+    "generated": datetime.datetime.now().isoformat(),
+    "count": len(unique),
+    "programs": unique
 }
 
-with open("my_tv.json","w",encoding="utf8") as f:
+with open("my_tv.json", "w", encoding="utf8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
 
-    json.dump(data,f,ensure_ascii=False,indent=2)
+print("done:", len(unique))
 
-print("programs:",len(unique))
