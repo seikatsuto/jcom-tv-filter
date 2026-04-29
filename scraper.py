@@ -23,7 +23,8 @@ def create_csv():
 
     # CSV保存
     filename = "bangumi.csv"
-    with open(filename, "w", newline="", encoding="utf-8-sig") as f:
+    #with open(filename, "w", newline="", encoding="utf-8-sig") as f:  #★
+    with open(filename, "w", newline="", encoding="shift_jis") as f:  #★
         writer = csv.writer(f)
         writer.writerow(["タイトル"])
         writer.writerows(data)
